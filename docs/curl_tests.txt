@@ -1,0 +1,56 @@
+# 📟 UrbanDrive API Curl Test Suite
+
+## 🚀 Base Server Check
+curl http://localhost:3001/
+
+---
+
+## 👤 User Routes
+
+### Create New User
+curl -X POST http://localhost:3001/api/users \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Alex","email":"alex@urbdrive.com"}'
+
+---
+
+## 🚘 Ride Routes
+
+### Create Ride
+curl -X POST http://localhost:3001/api/rides \
+  -H "Content-Type: application/json" \
+  -H "x-user-email: alex@urbdrive.com" \
+  -d '{"pickup_location":"Downtown","dropoff_location":"Airport"}'
+
+### Get Rides
+curl -H "x-user-email: alex@urbdrive.com" http://localhost:3001/api/rides
+
+---
+
+## 🛠 Admin Routes
+
+### Get All Users (must be admin)
+curl -H "x-user-email: alex@urbdrive.com" http://localhost:3001/admin/users
+
+### Promote Another User to Admin
+curl -X PUT -H "x-user-email: alex@urbdrive.com" \
+  http://localhost:3001/admin/promote/alex2@urbdrive.com
+
+### Clear All Non-Admin Users
+curl -X DELETE -H "x-user-email: alex@urbdrive.com" \
+  http://localhost:3001/admin/clear-users
+
+### Clear All Rides
+curl -X DELETE -H "x-user-email: alex@urbdrive.com" \
+  http://localhost:3001/admin/clear-rides
+
+---
+
+## ❌ Invalid Header Test
+
+curl -X DELETE http://localhost:3001/admin/clear-rides
+
+# Expected:
+# {"error":"Email header missing"}
+
+---
