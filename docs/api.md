@@ -1,23 +1,50 @@
+
 # 📘 UrbanDrive API Documentation
 
-Welcome to the official UrbanDrive API. This RESTful API powers all backend functionality for users, rides, and admin control.
+Welcome to the official UrbanDrive RESTful API, powering user management, ride bookings, and admin controls for the UrbanDrive platform.
 
 ---
 
 ## 🟢 Base URL
 
-```
 http://localhost:3001
+
+---
+
+## 📌 General Notes
+
+- All routes (except `/`) require a valid `x-user-email` header.
+- Admin routes require the user to be promoted to `"admin"`.
+- This project uses environment variables for database config — see `.env.example`.
+
+---
+
+## 🧪 Testing Tools
+
+We recommend using tools like:
+
+- [Postman](https://www.postman.com/)
+- `curl` (see `curl_tests.txt` for examples)
+- Insomnia or similar REST clients
+
+---
+
+## 🌐 CORS & Headers
+
+Cross-origin requests from the UrbanDrive frontend are supported.
+
+### Required Header
+```http
+x-user-email: alex@urbdrive.com
 ```
 
 ---
 
 ## 📂 Public Routes
 
-### `GET /`
-Returns a welcome message to confirm server is running.
+### GET /
+Health check — returns welcome message.
 
-**Response**
 ```json
 { "message": "Welcome to the UrbanDrive API. Server is running." }
 ```
@@ -26,11 +53,11 @@ Returns a welcome message to confirm server is running.
 
 ## 👤 User Routes
 
-### `POST /api/users`
+### POST /api/users
 Create a new user.
 
 **Headers**
-```
+```http
 Content-Type: application/json
 ```
 
@@ -51,11 +78,11 @@ Content-Type: application/json
 
 ## 🚘 Ride Routes
 
-### `POST /api/rides`
+### POST /api/rides
 Create a new ride request.
 
 **Headers**
-```
+```http
 Content-Type: application/json
 x-user-email: alex@urbdrive.com
 ```
@@ -75,81 +102,100 @@ x-user-email: alex@urbdrive.com
 
 ---
 
-### `GET /api/rides`
-Get all rides for the authenticated user.
+### GET /api/rides
+Fetch all ride requests made by the user.
 
 **Headers**
-```
+```http
 x-user-email: alex@urbdrive.com
+```
+
+**Response**
+```json
+[
+  {
+    "id": 1,
+    "pickup_location": "Downtown",
+    "dropoff_location": "Airport",
+    "status": "pending",
+    "requested_at": "2025-07-20T18:00:00.000Z"
+  }
+]
 ```
 
 ---
 
 ## 🛠 Admin Routes
 
-> All admin routes require a user with role = "admin" and a valid `x-user-email` header.
+> 🛑 Only accessible if the user has role = "admin"
 
----
-
-### `GET /admin/users`
-Returns list of all users.
+### GET /admin/users
+Return a list of all users.
 
 **Headers**
-```
+```http
 x-user-email: alex@urbdrive.com
 ```
 
 ---
 
-### `PUT /admin/promote/:email`
-Promote a user to admin.
-
-**Headers**
-```
-x-user-email: alex@urbdrive.com
-```
+### PUT /admin/promote/:email
+Promote a user to admin status.
 
 **Example**
+```http
+PUT /admin/promote/jane@urbdrive.com
 ```
-PUT /admin/promote/alex2@urbdrive.com
-```
-
----
-
-### `DELETE /admin/clear-users`
-Deletes all users **except admins**.
 
 **Headers**
-```
+```http
 x-user-email: alex@urbdrive.com
 ```
 
 ---
 
-### `DELETE /admin/clear-rides`
-Deletes all ride history for all users.
+### DELETE /admin/clear-users
+Delete all users except those with role = "admin".
 
 **Headers**
-```
+```http
 x-user-email: alex@urbdrive.com
 ```
 
 ---
 
-## ⚠️ Error Handling
+### DELETE /admin/clear-rides
+Clear all ride history across all users.
 
-All unauthorized or failed actions will return:
-```json
-{ "error": "Access denied: not an admin" }
+**Headers**
+```http
+x-user-email: alex@urbdrive.com
 ```
-or
+
+---
+
+## ❌ Error Handling
+
+Common errors:
+
 ```json
 { "error": "Email header missing" }
+
+{ "error": "Access denied: not an admin" }
+
+{ "error": "Missing required fields" }
 ```
 
 ---
 
-## 📌 Notes
+## 🧠 Built With
 
-- All requests must include a valid `x-user-email` header to identify the user.
-- Admin endpoints require the user's role to be `"admin"`.
+- Express.js + TypeScript
+- PostgreSQL via Neon
+- `.env` file for sensitive credentials (see `.env.example`)
+- Role-based middleware
+- Curl test suite: `curl_tests.txt`
+
+---
+
+_Last updated: 2025-07-20_

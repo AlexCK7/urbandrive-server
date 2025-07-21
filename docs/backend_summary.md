@@ -41,7 +41,7 @@ urbandrive-server/
 
 ## 🚦 Available Routes
 
-| Method | Endpoint                       | Role Required | Description                        |
+| **Method** | **Endpoint**                       | **Role Required** | **Description**                        |
 |--------|--------------------------------|----------------|------------------------------------|
 | GET    | `/`                            | Public         | Health check                       |
 | POST   | `/api/users`                   | Public         | Create new user                    |
@@ -68,7 +68,7 @@ urbandrive-server/
 - Enhanced validation with Zod or Joi
 - Rate limiting + logging
 - Deployment with Railway or Vercel serverless
-- Frontend integration via React Native (in progress)
+- Frontend: Expo Router + SecureStore + fetch() (React Native, in progress)
 
 ---
 
