@@ -1,9 +1,10 @@
 import express from 'express';
 import pool from '../models/db';
 const router = express.Router();
+import { Request, Response } from 'express';
 
 // Create user
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response) => {
   const { name, email, role } = req.body;
   try {
     const result = await pool.query(
@@ -20,7 +21,7 @@ router.post('/', async (req, res) => {
 });
 
 // Get all users
-router.get('/', async (_req, res) => {
+router.get('/', async (_req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT * FROM users');
     res.json(result.rows);
@@ -30,7 +31,7 @@ router.get('/', async (_req, res) => {
 });
 
 // Get single user by ID
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
   const userId = req.params.id;
   try {
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);

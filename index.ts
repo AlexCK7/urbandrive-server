@@ -5,6 +5,7 @@ import userRoutes from './routes/userRoutes';
 import rideRoutes from './routes/rideRoutes';
 import adminRoutes from './routes/adminRoutes';
 import publicRoutes from './routes/publicRoutes';
+import driverRoutes from './routes/driverRoutes';
 
 dotenv.config();
 
@@ -17,6 +18,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/rides', rideRoutes);
 app.use('/admin', adminRoutes);
 app.use('/', publicRoutes); // Health check, landing, open routes
+app.use('/api/drivers', driverRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
