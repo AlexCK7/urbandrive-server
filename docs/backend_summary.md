@@ -56,7 +56,7 @@ urbandrive-server/
 
 ## 🧪 Dev & Testing
 
-- Run server: `npm run dev`
+- Run server: `./start-dev`
 - Test endpoints: use `curl_tests.txt`
 - Logs confirm `.env` is loading properly
 

@@ -22,5 +22,6 @@ app.use('/api/drivers', driverRoutes);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
+  console.log("✅ BASE_URL should match:", process.env.BASE_URL);
   console.log(`✅ UrbanDrive backend is running on http://localhost:${PORT}`);
 });

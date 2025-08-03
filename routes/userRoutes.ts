@@ -1,36 +1,39 @@
 import express from 'express';
+import { signupUser, loginUser, getAllUsers } from '../controllers/userController';
 import pool from '../models/db';
-const router = express.Router();
+import bcrypt from 'bcrypt';
 import { Request, Response } from 'express';
 
-// Create user
+const router = express.Router();
+
+// POST /api/users/signup
+router.post('/signup', signupUser);
+
+// POST /api/users/login
+router.post('/login', loginUser);
+
+// POST /api/users/  — Admin-style creation
 router.post('/', async (req: Request, res: Response) => {
-  const { name, email, role } = req.body;
+  const { name, email, password, role } = req.body;
+
   try {
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
+
     const result = await pool.query(
-      'INSERT INTO users (name, email, role) VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING RETURNING *',
-      [name, email, role || 'user']
+      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, email, hashedPassword, role || 'user']
     );
-    if (result.rows.length === 0) {
-      return res.status(409).json({ message: 'User already exists' });
-    }
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
+    console.error('❌ Admin user creation failed:', err);
     res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
-// Get all users
-router.get('/', async (_req: Request, res: Response) => {
-  try {
-    const result = await pool.query('SELECT * FROM users');
-    res.json(result.rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
-  }
-});
+// GET /api/users/
+router.get('/', getAllUsers);
 
-// Get single user by ID
 router.get('/:id', async (req: Request, res: Response) => {
   const userId = req.params.id;
   try {
@@ -38,6 +41,7 @@ router.get('/:id', async (req: Request, res: Response) => {
     if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
     res.json(result.rows[0]);
   } catch (err) {
+    console.error('Get user by ID failed:', err);
     res.status(500).json({ error: 'Error retrieving user' });
   }
 });

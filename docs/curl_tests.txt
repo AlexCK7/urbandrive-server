@@ -10,7 +10,7 @@ curl http://localhost:3001/
 ### Create New User
 curl -X POST http://localhost:3001/api/users \
   -H "Content-Type: application/json" \
-  -d '{"name":"Alex","email":"alex@urbdrive.com"}'
+  -d '{"name":"Taiga","email":"taiga@urbdrive.com"}'
 
 ---
 
@@ -19,29 +19,29 @@ curl -X POST http://localhost:3001/api/users \
 ### Create Ride
 curl -X POST http://localhost:3001/api/rides \
   -H "Content-Type: application/json" \
-  -H "x-user-email: alex@urbdrive.com" \
+  -H "x-user-email: taiga@urbdrive.com" \
   -d '{"pickup_location":"Downtown","dropoff_location":"Airport"}'
 
 ### Get Rides
-curl -H "x-user-email: alex@urbdrive.com" http://localhost:3001/api/rides
+curl -H "x-user-email: taiga@urbdrive.com" http://localhost:3001/api/rides
 
 ---
 
 ## 🛠 Admin Routes
 
 ### Get All Users (must be admin)
-curl -H "x-user-email: alex@urbdrive.com" http://localhost:3001/admin/users
+curl -H "x-user-email: taiga@urbdrive.com" http://localhost:3001/admin/users
 
 ### Promote Another User to Admin
-curl -X PUT -H "x-user-email: alex@urbdrive.com" \
-  http://localhost:3001/admin/promote/alex2@urbdrive.com
+curl -X PUT -H "x-user-email: taiga@urbdrive.com" \
+  http://localhost:3001/admin/promote/other@urbdrive.com
 
 ### Clear All Non-Admin Users
-curl -X DELETE -H "x-user-email: alex@urbdrive.com" \
+curl -X DELETE -H "x-user-email: taiga@urbdrive.com" \
   http://localhost:3001/admin/clear-users
 
 ### Clear All Rides
-curl -X DELETE -H "x-user-email: alex@urbdrive.com" \
+curl -X DELETE -H "x-user-email: taiga@urbdrive.com" \
   http://localhost:3001/admin/clear-rides
 
 ---
@@ -52,5 +52,3 @@ curl -X DELETE http://localhost:3001/admin/clear-rides
 
 # Expected:
 # {"error":"Email header missing"}
-
----

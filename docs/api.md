@@ -5,6 +5,11 @@ Welcome to the official UrbanDrive RESTful API, powering user management, ride b
 
 ---
 
+## 📦 Version: 1.0.0  
+📅 Last Updated: 2025-08-02
+
+---
+
 ## 🟢 Base URL
 
 http://localhost:3001
@@ -21,11 +26,11 @@ http://localhost:3001
 
 ## 🧪 Testing Tools
 
-We recommend using tools like:
+We recommend:
 
 - [Postman](https://www.postman.com/)
-- `curl` (see `curl_tests.txt` for examples)
-- Insomnia or similar REST clients
+- `curl` — see `curl_tests.txt`
+- Insomnia or REST clients
 
 ---
 
@@ -33,9 +38,10 @@ We recommend using tools like:
 
 Cross-origin requests from the UrbanDrive frontend are supported.
 
-### Required Header
+**Required Headers**
 ```http
-x-user-email: alex@urbdrive.com
+Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 ---
@@ -43,8 +49,9 @@ x-user-email: alex@urbdrive.com
 ## 📂 Public Routes
 
 ### GET /
-Health check — returns welcome message.
+Health check.
 
+**Response**
 ```json
 { "message": "Welcome to the UrbanDrive API. Server is running." }
 ```
@@ -54,18 +61,19 @@ Health check — returns welcome message.
 ## 👤 User Routes
 
 ### POST /api/users
-Create a new user.
+Create a user.
 
 **Headers**
 ```http
 Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 **Body**
 ```json
 {
-  "name": "Alexander",
-  "email": "alex@urbdrive.com"
+  "name": "Taiga",
+  "email": "taiga@urbdrive.com"
 }
 ```
 
@@ -79,12 +87,12 @@ Content-Type: application/json
 ## 🚘 Ride Routes
 
 ### POST /api/rides
-Create a new ride request.
+Request a ride.
 
 **Headers**
 ```http
 Content-Type: application/json
-x-user-email: alex@urbdrive.com
+x-user-email: taiga@urbdrive.com
 ```
 
 **Body**
@@ -103,11 +111,12 @@ x-user-email: alex@urbdrive.com
 ---
 
 ### GET /api/rides
-Fetch all ride requests made by the user.
+Get rides for current user.
 
 **Headers**
 ```http
-x-user-email: alex@urbdrive.com
+Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 **Response**
@@ -127,62 +136,63 @@ x-user-email: alex@urbdrive.com
 
 ## 🛠 Admin Routes
 
-> 🛑 Only accessible if the user has role = "admin"
+> Only available for users with `"role": "admin"`
 
 ### GET /admin/users
-Return a list of all users.
+Get all users.
 
 **Headers**
 ```http
-x-user-email: alex@urbdrive.com
+Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 ---
 
 ### PUT /admin/promote/:email
-Promote a user to admin status.
+Make a user an admin.
 
-**Example**
+**Example Route**
 ```http
 PUT /admin/promote/jane@urbdrive.com
 ```
 
 **Headers**
 ```http
-x-user-email: alex@urbdrive.com
+Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 ---
 
 ### DELETE /admin/clear-users
-Delete all users except those with role = "admin".
+Remove all non-admin users.
 
 **Headers**
 ```http
-x-user-email: alex@urbdrive.com
+Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 ---
 
 ### DELETE /admin/clear-rides
-Clear all ride history across all users.
+Remove all ride history.
 
 **Headers**
 ```http
-x-user-email: alex@urbdrive.com
+Content-Type: application/json
+x-user-email: taiga@urbdrive.com
 ```
 
 ---
 
 ## ❌ Error Handling
 
-Common errors:
-
+Common responses:
 ```json
 { "error": "Email header missing" }
-
 { "error": "Access denied: not an admin" }
-
 { "error": "Missing required fields" }
 ```
 
@@ -191,11 +201,7 @@ Common errors:
 ## 🧠 Built With
 
 - Express.js + TypeScript
-- PostgreSQL via Neon
-- `.env` file for sensitive credentials (see `.env.example`)
-- Role-based middleware
-- Curl test suite: `curl_tests.txt`
-
----
-
-_Last updated: 2025-07-20_
+- PostgreSQL (via Neon)
+- Role-based access middleware
+- Environment config via `.env`
+- Curl testing: `curl_tests.txt`
