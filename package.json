@@ -18,6 +18,7 @@
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.0",
+    "expo-constants": "^17.1.7",
     "express": "^5.1.0",
     "pg": "^8.16.3"
   },
@@ -27,6 +28,7 @@
     "@types/express": "^5.0.3",
     "@types/node": "^24.1.0",
     "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"
   }
 }

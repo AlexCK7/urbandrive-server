@@ -1,78 +1,112 @@
-// routes/rideRoutes.ts
 import express, { Request, Response } from 'express';
 import pool from '../models/db';
 
 const router = express.Router();
 
-// Book a new ride
+/**
+ * 🛺 Book a new ride (uses email header)
+ */
 router.post('/', async (req: Request, res: Response) => {
-  const { user_id, origin, destination } = req.body;
+  const email = req.headers['x-user-email'] as string;
+  const { origin, destination, pickup_location, dropoff_location } = req.body;
+
+  const resolvedOrigin = origin || pickup_location;
+  const resolvedDestination = destination || dropoff_location;
+
+  if (!email || !resolvedOrigin || !resolvedDestination) {
+    return res.status(400).json({
+      error: 'Missing required fields',
+      details: {
+        email_required: !email,
+        origin_required: !resolvedOrigin,
+        destination_required: !resolvedDestination
+      }
+    });
+  }
+
+  console.log("📩 Email header:", email);
+
   try {
+    const userRes = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    const user_id = userRes.rows[0]?.id;
+
+    if (!user_id) {
+      return res.status(404).json({ error: 'User not found for provided email' });
+    }
+
     const result = await pool.query(
       'INSERT INTO rides (user_id, origin, destination) VALUES ($1, $2, $3) RETURNING *',
-      [user_id, origin, destination]
+      [user_id, resolvedOrigin, resolvedDestination]
     );
+
+    console.log("📦 Ride payload:", { resolvedOrigin, resolvedDestination });
+    console.log("🔎 Resolved user_id:", user_id);
+
     res.status(201).json(result.rows[0]);
   } catch (err) {
-    console.error('❌ Ride creation failed:', err); // <-- Add this
+    console.error('❌ Ride creation failed:', err);
     res.status(500).json({ error: 'Ride creation failed' });
   }
 });
 
-// Get all rides (optionally filtered by status)
+/**
+ * 🚗 Admin-only: View all rides
+ */
 router.get('/', async (req: Request, res: Response) => {
-  const { status } = req.query;
-
   try {
-    let query = 'SELECT * FROM rides';
-    let params: any[] = [];
+    const email = req.headers['x-user-email'] as string;
+    if (!email) return res.status(400).json({ error: 'Missing email header' });
 
-    if (status) {
-      query += ' WHERE status = $1';
-      params.push(status);
+    const userResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = userResult.rows[0];
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admins can view all rides' });
     }
 
-    const result = await pool.query(query, params);
-    res.json(result.rows);
-  } catch (err) {
+    const result = await pool.query('SELECT * FROM rides ORDER BY requested_at DESC');
+    res.json({ rides: result.rows });
+  } catch (error) {
+    console.error('❌ Error fetching all rides:', error);
     res.status(500).json({ error: 'Failed to fetch rides' });
   }
 });
 
-// Assign driver to ride
-router.post('/:rideId/assign', async (req: Request, res: Response) => {
-  const rideId = req.params.rideId;
-  const { driver_id } = req.body;
+// GET /api/rides/user - Get rides for a specific user by email
+router.get('/user', async (req: Request, res: Response) => {
+  const email = req.headers['x-user-email'] as string;
+  if (!email) return res.status(400).json({ error: 'Missing email header' });
 
   try {
-    // 1. Confirm the driver exists and has correct role
-    const driverCheck = await pool.query(
-      'SELECT * FROM users WHERE id = $1 AND role = $2',
-      [driver_id, 'driver']
-    );
+    const userResult = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
 
-    if (driverCheck.rows.length === 0) {
-      return res.status(400).json({ error: 'Invalid driver ID or role' });
-    }
+    const userId = userResult.rows[0].id;
+    const rideResult = await pool.query("SELECT * FROM rides WHERE user_id = $1", [userId]);
 
-    // 2. Assign the driver
-    const result = await pool.query(
-      `UPDATE rides 
-       SET driver_id = $1, status = 'assigned' 
-       WHERE id = $2 
-       RETURNING *`,
-      [driver_id, rideId]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Ride not found' });
-    }
-
-    res.json(result.rows[0]);
+    return res.json({ rides: rideResult.rows });
   } catch (err) {
-    const error = err as Error;
-    console.error('Driver assignment error:', error);
-    res.status(500).json({ error: 'Failed to assign driver', details: error.message });
+    console.error("❌ Error fetching user rides:", err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/rides/driver - Get rides assigned to a driver
+router.get('/driver', async (req: Request, res: Response) => {
+  const email = req.headers['x-user-email'] as string;
+  if (!email) return res.status(400).json({ error: 'Missing email header' });
+
+  try {
+    const driverResult = await pool.query("SELECT id FROM users WHERE email = $1", [email]);
+    if (driverResult.rows.length === 0) return res.status(404).json({ error: 'Driver not found' });
+
+    const driverId = driverResult.rows[0].id;
+    const rideResult = await pool.query("SELECT * FROM rides WHERE driver_id = $1", [driverId]);
+
+    return res.json({ rides: rideResult.rows });
+  } catch (err) {
+    console.error("❌ Error fetching driver rides:", err);
+    return res.status(500).json({ error: 'Server error' });
   }
 });
 

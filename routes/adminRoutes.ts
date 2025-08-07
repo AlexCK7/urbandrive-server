@@ -1,11 +1,10 @@
-// routes/adminRoutes.ts
-import express from 'express';
+import express, { Request, Response } from 'express';
 import pool from '../models/db';
 
 const router = express.Router();
 
-// Middleware to check if requester is admin
-router.use(async (req, res, next) => {
+// Middleware: verify admin via x-user-email
+router.use(async (req: Request, res: Response, next) => {
   const email = req.headers['x-user-email'] as string;
   if (!email) return res.status(401).json({ error: 'Email header missing' });
 
@@ -20,8 +19,8 @@ router.use(async (req, res, next) => {
   }
 });
 
-// ✅ GET all users
-router.get('/users', async (req, res) => {
+// 🧑‍💼 Get all users
+router.get('/users', async (_req: Request, res: Response) => {
   try {
     const result = await pool.query('SELECT id, name, email, role FROM users');
     res.json(result.rows);
@@ -30,8 +29,8 @@ router.get('/users', async (req, res) => {
   }
 });
 
-// ✅ Promote a user to admin
-router.put('/promote/:email', async (req, res) => {
+// 🏆 Promote user to admin
+router.put('/promote/:email', async (req: Request, res: Response) => {
   const { email } = req.params;
   try {
     await pool.query("UPDATE users SET role = 'admin' WHERE email = $1", [email]);
@@ -41,8 +40,8 @@ router.put('/promote/:email', async (req, res) => {
   }
 });
 
-// ✅ DELETE all non-admin users
-router.delete('/clear-users', async (req, res) => {
+// 🧹 Clear non-admin users
+router.delete('/clear-users', async (_req: Request, res: Response) => {
   try {
     await pool.query("DELETE FROM users WHERE role != 'admin'");
     res.json({ message: 'Non-admin users deleted' });
@@ -51,8 +50,8 @@ router.delete('/clear-users', async (req, res) => {
   }
 });
 
-// ✅ DELETE all rides
-router.delete('/clear-rides', async (req, res) => {
+// 🗑️ Clear all rides
+router.delete('/clear-rides', async (_req: Request, res: Response) => {
   try {
     await pool.query('DELETE FROM rides');
     res.json({ message: 'All rides deleted' });

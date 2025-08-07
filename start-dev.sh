@@ -1,24 +1,27 @@
 #!/bin/bash
 
 echo "✅ Starting Backend Server..."
+
+# Start nodemon
 npx nodemon index.ts &
-BACKEND_PID=$!
+NODEMON_PID=$!
 
-sleep 3
-
-echo "🌐 Starting Tunnel..."
+# Try localtunnel first
 npx localtunnel --port 3001 --subdomain urbandrive &
 TUNNEL_PID=$!
 
-# Cleanup function on Ctrl+C
-cleanup() {
-  echo "🛑 Shutting down backend and tunnel..."
-  kill $BACKEND_PID
-  kill $TUNNEL_PID
-  exit
-}
+# Wait briefly
+sleep 3
 
-trap cleanup SIGINT
+# If localtunnel failed, use ngrok
+if ! ps -p $TUNNEL_PID > /dev/null; then
+  echo "⚠️ LocalTunnel failed. Falling back to ngrok..."
+  npx ngrok http 3001 &
+  TUNNEL_PID=$!
+fi
 
-# Keep script alive to allow cleanup
+# Handle shutdown signals
+trap "echo '🛑 Shutting down backend and tunnel...'; kill $NODEMON_PID $TUNNEL_PID; exit 0" SIGINT SIGTERM
+
+# Wait for background processes
 wait
