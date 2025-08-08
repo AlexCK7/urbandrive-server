@@ -60,4 +60,13 @@ router.delete('/clear-rides', async (_req: Request, res: Response) => {
   }
 });
 
+router.get('/drivers', async (_req, res) => {
+  try {
+    const result = await pool.query("SELECT id, name, email FROM users WHERE role = 'driver'");
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch drivers' });
+  }
+});
+
 export default router;

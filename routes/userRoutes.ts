@@ -12,6 +12,29 @@ router.post('/signup', signupUser);
 // POST /api/users/login
 router.post('/login', loginUser);
 
+router.post('/signup', async (req: Request, res: Response) => {
+  const { name, email, password, role = 'user' } = req.body;
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  if (!['user', 'driver'].includes(role)) {
+    return res.status(400).json({ error: 'Invalid role' });
+  }
+
+  try {
+    const hashed = await bcrypt.hash(password, 10);
+    await pool.query(
+      'INSERT INTO users (name, email, password, role) VALUES ($1,$2,$3,$4)',
+      [name, email, hashed, role]
+    );
+    res.status(201).json({ message: 'Signup successful' });
+  } catch (err) {
+    console.error('Signup failed:', err);
+    res.status(500).json({ error: 'Signup failed' });
+  }
+});
+
 // POST /api/users/  — Admin-style creation
 router.post('/', async (req: Request, res: Response) => {
   const { name, email, password, role } = req.body;
