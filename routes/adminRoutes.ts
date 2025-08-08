@@ -3,7 +3,7 @@ import pool from '../models/db';
 
 const router = express.Router();
 
-// Middleware: verify admin via x-user-email
+// Middleware to check admin
 router.use(async (req: Request, res: Response, next) => {
   const email = req.headers['x-user-email'] as string;
   if (!email) return res.status(401).json({ error: 'Email header missing' });
@@ -19,17 +19,17 @@ router.use(async (req: Request, res: Response, next) => {
   }
 });
 
-// 🧑‍💼 Get all users
-router.get('/users', async (_req: Request, res: Response) => {
+// List all drivers
+router.get('/drivers', async (_req: Request, res: Response) => {
   try {
-    const result = await pool.query('SELECT id, name, email, role FROM users');
+    const result = await pool.query('SELECT id, name, email FROM users WHERE role = $1', ['driver']);
     res.json(result.rows);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch users' });
+    res.status(500).json({ error: 'Failed to fetch drivers' });
   }
 });
 
-// 🏆 Promote user to admin
+// Promote a user to admin
 router.put('/promote/:email', async (req: Request, res: Response) => {
   const { email } = req.params;
   try {
@@ -40,7 +40,7 @@ router.put('/promote/:email', async (req: Request, res: Response) => {
   }
 });
 
-// 🧹 Clear non-admin users
+// Delete non-admin users
 router.delete('/clear-users', async (_req: Request, res: Response) => {
   try {
     await pool.query("DELETE FROM users WHERE role != 'admin'");
@@ -50,7 +50,7 @@ router.delete('/clear-users', async (_req: Request, res: Response) => {
   }
 });
 
-// 🗑️ Clear all rides
+// Delete all rides
 router.delete('/clear-rides', async (_req: Request, res: Response) => {
   try {
     await pool.query('DELETE FROM rides');
@@ -60,11 +60,12 @@ router.delete('/clear-rides', async (_req: Request, res: Response) => {
   }
 });
 
-router.get('/drivers', async (_req, res) => {
+router.get('/drivers', async (_req: Request, res: Response) => {
   try {
-    const result = await pool.query("SELECT id, name, email FROM users WHERE role = 'driver'");
+    const result = await pool.query('SELECT id, name, email FROM users WHERE role=$1', ['driver']);
     res.json(result.rows);
   } catch (err) {
+    console.error(err);
     res.status(500).json({ error: 'Failed to fetch drivers' });
   }
 });
