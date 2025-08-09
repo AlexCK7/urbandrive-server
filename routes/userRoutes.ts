@@ -1,72 +1,67 @@
-import express from 'express';
-import { signupUser, loginUser, getAllUsers } from '../controllers/userController';
-import pool from '../models/db';
-import bcrypt from 'bcrypt';
-import { Request, Response } from 'express';
+import express, { Request, Response } from "express";
+import pool from "../models/db";
 
 const router = express.Router();
 
-// POST /api/users/signup
-router.post('/signup', signupUser);
-
-// POST /api/users/login
-router.post('/login', loginUser);
-
-router.post('/signup', async (req: Request, res: Response) => {
-  const { name, email, password, role = 'user' } = req.body;
-
-  if (!name || !email || !password) {
-    return res.status(400).json({ error: 'Missing required fields' });
-  }
-  if (!['user', 'driver'].includes(role)) {
-    return res.status(400).json({ error: 'Invalid role' });
-  }
-
+/**
+ * Create user (idempotent)
+ * - 201 when created
+ * - 200 when user already exists (returns existing)
+ * - 400 on bad input
+ */
+router.post("/", async (req: Request, res: Response) => {
   try {
-    const hashed = await bcrypt.hash(password, 10);
-    await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1,$2,$3,$4)',
-      [name, email, hashed, role]
+    const { name, email, role } = req.body as {
+      name?: string;
+      email?: string;
+      role?: "user" | "driver" | "admin";
+    };
+
+    if (!name || !email) {
+      return res.status(400).json({ error: "Missing name or email" });
+    }
+
+    // Default role
+    const safeRole: "user" | "driver" | "admin" = (role as any) ?? "user";
+
+    // If exists, return existing as success (idempotent)
+    const exists = await pool.query("SELECT id, name, email, role FROM users WHERE email=$1", [email]);
+    if (exists.rowCount && exists.rows[0]) {
+      return res.status(200).json({ ...exists.rows[0], existed: true });
+    }
+
+    // Create user
+    const created = await pool.query(
+      `INSERT INTO users (name, email, role)
+       VALUES ($1, $2, $3)
+       RETURNING id, name, email, role`,
+      [name, email, safeRole]
     );
-    res.status(201).json({ message: 'Signup successful' });
-  } catch (err) {
-    console.error('Signup failed:', err);
-    res.status(500).json({ error: 'Signup failed' });
+
+    return res.status(201).json(created.rows[0]);
+  } catch (err: any) {
+    // If unique constraint somehow races, treat it as success
+    if (err?.code === "23505") {
+      const email = (req.body && req.body.email) || "";
+      const row = await pool.query("SELECT id, name, email, role FROM users WHERE email=$1", [email]);
+      return res.status(200).json({ ...row.rows[0], existed: true });
+    }
+    console.error("Create user failed:", err);
+    return res.status(500).json({ error: "Failed to create user" });
   }
 });
 
-// POST /api/users/  — Admin-style creation
-router.post('/', async (req: Request, res: Response) => {
-  const { name, email, password, role } = req.body;
+/**
+ * Basic lookup (useful for debugging)
+ * GET /api/users?email=foo@bar.com
+ */
+router.get("/", async (req: Request, res: Response) => {
+  const email = (req.query.email as string) || "";
+  if (!email) return res.status(400).json({ error: "Missing email query param" });
 
-  try {
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
-
-    const result = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, email, hashedPassword, role || 'user']
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (err) {
-    console.error('❌ Admin user creation failed:', err);
-    res.status(500).json({ error: 'Failed to create user' });
-  }
-});
-
-// GET /api/users/
-router.get('/', getAllUsers);
-
-router.get('/:id', async (req: Request, res: Response) => {
-  const userId = req.params.id;
-  try {
-    const result = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
-    if (result.rows.length === 0) return res.status(404).json({ message: 'User not found' });
-    res.json(result.rows[0]);
-  } catch (err) {
-    console.error('Get user by ID failed:', err);
-    res.status(500).json({ error: 'Error retrieving user' });
-  }
+  const row = await pool.query("SELECT id, name, email, role FROM users WHERE email=$1", [email]);
+  if (!row.rowCount) return res.status(404).json({ error: "Not found" });
+  return res.json(row.rows[0]);
 });
 
 export default router;

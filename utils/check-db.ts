@@ -1,11 +1,13 @@
-import pool from '../models/db';
+// utils/check-db.ts
+import { pool } from './db';
 
-(async () => {
+export const checkDbConnection = async (): Promise<boolean> => {
   try {
-    const result = await pool.query('SELECT NOW()');
-    console.log('✅ Database connected at:', result.rows[0].now);
+    const res = await pool.query('SELECT NOW()');
+    console.log('✅ Database connection successful:', res.rows[0]);
+    return true;
   } catch (err) {
     console.error('❌ Database connection failed:', err);
-    process.exit(1);
+    return false;
   }
-})();
+};
