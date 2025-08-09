@@ -1,22 +1,26 @@
+// routes/rideRoutes.ts
 import express, { Request, Response } from "express";
 import pool from "../models/db";
+import { requireRole } from "../middleware/requireRole";
 
 const router = express.Router();
 
-// Book a new ride
-router.post("/", async (req: Request, res: Response) => {
-  const email = req.headers["x-user-email"] as string;
+// Book a new ride (any logged in user)
+router.post("/", requireRole(["user", "driver", "admin"]), async (req: Request, res: Response) => {
+  const email = req.authUser!.email;
   const { origin, destination, sharedWithEmail } = req.body;
-  if (!email || !origin || !destination) {
+
+  if (!origin || !destination) {
     return res.status(400).json({ error: "Missing required fields" });
   }
+
   try {
     const userRes = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
     const userId = userRes.rows[0]?.id;
     if (!userId) return res.status(404).json({ error: "User not found" });
 
     const result = await pool.query(
-      "INSERT INTO rides (user_id, origin, destination, shared_with_email) VALUES ($1,$2,$3,$4) RETURNING *",
+      "INSERT INTO rides (user_id, origin, destination, shared_with_email) VALUES ($1, $2, $3, $4) RETURNING *",
       [userId, origin, destination, sharedWithEmail || null]
     );
     res.status(201).json(result.rows[0]);
@@ -27,15 +31,7 @@ router.post("/", async (req: Request, res: Response) => {
 });
 
 // Get all rides (admin only)
-router.get("/", async (req: Request, res: Response) => {
-  const email = req.headers["x-user-email"] as string;
-  if (!email) return res.status(400).json({ error: "Missing email header" });
-
-  const userResult = await pool.query("SELECT role FROM users WHERE email=$1", [email]);
-  if (userResult.rows[0]?.role !== "admin") {
-    return res.status(403).json({ error: "Only admins can view all rides" });
-  }
-
+router.get("/", requireRole(["admin"]), async (_req: Request, res: Response) => {
   try {
     const result = await pool.query("SELECT * FROM rides ORDER BY requested_at DESC");
     res.json({ rides: result.rows });
@@ -45,17 +41,11 @@ router.get("/", async (req: Request, res: Response) => {
   }
 });
 
-// Get rides for a specific user
-router.get("/user", async (req: Request, res: Response) => {
-  const email = req.headers["x-user-email"] as string;
-  if (!email) return res.status(400).json({ error: "Missing email header" });
-
+// Get rides for current user
+router.get("/user", requireRole(["user", "driver", "admin"]), async (req: Request, res: Response) => {
   try {
-    const userResult = await pool.query("SELECT id FROM users WHERE email=$1", [email]);
-    if (userResult.rows.length === 0) return res.status(404).json({ error: "User not found" });
-
-    const userId = userResult.rows[0].id;
-    const rideResult = await pool.query("SELECT * FROM rides WHERE user_id=$1 ORDER BY requested_at DESC", [userId]);
+    const userId = req.authUser!.id;
+    const rideResult = await pool.query("SELECT * FROM rides WHERE user_id = $1 ORDER BY requested_at DESC", [userId]);
     res.json({ rides: rideResult.rows });
   } catch (err) {
     console.error("Error fetching user rides:", err);
@@ -63,17 +53,11 @@ router.get("/user", async (req: Request, res: Response) => {
   }
 });
 
-// Get rides for a driver (assigned)
-router.get("/driver", async (req: Request, res: Response) => {
-  const email = req.headers["x-user-email"] as string;
-  if (!email) return res.status(400).json({ error: "Missing email header" });
-
+// Get rides assigned to the current driver (driver/admin)
+router.get("/driver", requireRole(["driver", "admin"]), async (req: Request, res: Response) => {
   try {
-    const driverResult = await pool.query("SELECT id FROM users WHERE email=$1 AND role='driver'", [email]);
-    if (driverResult.rows.length === 0) return res.status(403).json({ error: "Driver not found" });
-
-    const driverId = driverResult.rows[0].id;
-    const ridesResult = await pool.query("SELECT * FROM rides WHERE driver_id=$1 ORDER BY requested_at DESC", [driverId]);
+    const driverId = req.authUser!.id;
+    const ridesResult = await pool.query("SELECT * FROM rides WHERE driver_id = $1 ORDER BY requested_at DESC", [driverId]);
     res.json({ rides: ridesResult.rows });
   } catch (err) {
     console.error("Error fetching driver rides:", err);
@@ -81,21 +65,15 @@ router.get("/driver", async (req: Request, res: Response) => {
   }
 });
 
-// Assign driver to ride (admin)
-router.patch("/:id/assign", async (req: Request, res: Response) => {
-  const adminEmail = req.headers["x-user-email"] as string;
+// Assign driver (admin only)
+router.patch("/:id/assign", requireRole(["admin"]), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { driverEmail } = req.body;
-  if (!adminEmail || !driverEmail) return res.status(400).json({ error: "Missing fields" });
+  if (!driverEmail) return res.status(400).json({ error: "Missing driverEmail" });
 
   try {
-    const adminCheck = await pool.query("SELECT role FROM users WHERE email=$1", [adminEmail]);
-    if (adminCheck.rows[0]?.role !== "admin") {
-      return res.status(403).json({ error: "Only admins can assign rides" });
-    }
-
-    const driverCheck = await pool.query("SELECT id FROM users WHERE email=$1 AND role='driver'", [driverEmail]);
-    const driverId = driverCheck.rows[0]?.id;
+    const driverRes = await pool.query("SELECT id FROM users WHERE email=$1 AND role='driver'", [driverEmail]);
+    const driverId = driverRes.rows[0]?.id;
     if (!driverId) return res.status(404).json({ error: "Driver not found" });
 
     await pool.query("UPDATE rides SET driver_id=$1, status='assigned' WHERE id=$2", [driverId, id]);
@@ -106,44 +84,51 @@ router.patch("/:id/assign", async (req: Request, res: Response) => {
   }
 });
 
-// Share ride with friend (only the owner can share)
-router.patch("/:id/share", async (req: Request, res: Response) => {
-  const riderEmail = req.headers["x-user-email"] as string;
+// Share ride with friend (owner OR admin)
+router.patch("/:id/share", requireRole(["user", "driver", "admin"]), async (req: Request, res: Response) => {
   const { id } = req.params;
   const { friendEmail } = req.body;
-  if (!riderEmail || !friendEmail) return res.status(400).json({ error: "Missing fields" });
+  if (!friendEmail) return res.status(400).json({ error: "Missing friendEmail" });
 
   try {
-    const riderCheck = await pool.query(
-      "SELECT users.id, users.email FROM rides JOIN users ON rides.user_id=users.id WHERE rides.id=$1",
+    // Only owner or admin can share
+    const owner = await pool.query(
+      "SELECT user_id FROM rides WHERE id=$1",
       [id]
     );
-    if (!riderCheck.rows[0] || riderCheck.rows[0].email !== riderEmail) {
+    const userId = owner.rows[0]?.user_id;
+    const isOwner = userId === req.authUser!.id;
+    const isAdmin = req.authUser!.role === "admin";
+    if (!isOwner && !isAdmin) {
       return res.status(403).json({ error: "You cannot share a ride you do not own" });
     }
+
     await pool.query("UPDATE rides SET shared_with_email=$1 WHERE id=$2", [friendEmail, id]);
     res.json({ message: "Ride shared successfully" });
   } catch (err) {
-    console.error("Error sharing ride:", err);
-    res.status(500).json({ error: "Failed to share ride" });
+    console.error(err);
+    res.status(500).json({ error: "Server error while sharing ride" });
   }
 });
 
-// Mark as completed (driver or admin)
-router.patch("/:id/complete", async (req: Request, res: Response) => {
-  const email = req.headers["x-user-email"] as string;
+// Mark as completed (driver must be assigned OR admin)
+router.patch("/:id/complete", requireRole(["driver", "admin"]), async (req: Request, res: Response) => {
   const { id } = req.params;
-  if (!email) return res.status(400).json({ error: "Missing email header" });
-
   try {
-    const who = await pool.query("SELECT id, role FROM users WHERE email=$1", [email]);
-    const role = who.rows[0]?.role as "driver" | "admin" | undefined;
-    if (!(role === "driver" || role === "admin")) {
-      return res.status(403).json({ error: "Only drivers or admins can complete rides" });
+    // If driver, ensure this ride is assigned to them
+    if (req.authUser!.role === "driver") {
+      const { rows } = await pool.query("SELECT driver_id FROM rides WHERE id=$1", [id]);
+      if (!rows[0] || rows[0].driver_id !== req.authUser!.id) {
+        return res.status(403).json({ error: "Not assigned to this ride" });
+      }
     }
-    const result = await pool.query("UPDATE rides SET status='completed' WHERE id=$1 RETURNING *", [id]);
-    if (!result.rows[0]) return res.status(404).json({ error: "Ride not found" });
-    res.json({ message: "Ride marked completed", ride: result.rows[0] });
+
+    const { rows } = await pool.query(
+      "UPDATE rides SET status='completed' WHERE id=$1 RETURNING *",
+      [id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: "Ride not found" });
+    res.json({ message: "Ride marked completed", ride: rows[0] });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: "Failed to complete ride" });
