@@ -1,98 +1,106 @@
-# 🚀 UrbanDrive Backend
+# 🚀 UrbanDrive Server (Express + Postgres + TypeScript)
 
-This is the backend API for the UrbanDrive platform — a modern ride-sharing application built with Express.js, PostgreSQL, and TypeScript. It provides endpoints for user creation, ride booking, and admin-level data control.
-
----
-
-## 🛠️ Tech Stack
-
-- **Language**: TypeScript
-- **Runtime**: Node.js with ts-node
-- **Framework**: Express.js
-- **Database**: PostgreSQL (hosted on [Neon](https://neon.tech))
-- **Environment Management**: dotenv
-- **ORM**: `pg` with raw SQL
+Backend API for UrbanDrive. Provides users, rides, role‑based access (user/driver/admin), and admin assignment flows.
 
 ---
 
-## 📁 Folder Structure
-
-```
-urbandrive-server/
-├── index.ts              # Main server file
-├── routes/
-│   ├── publicRoutes.ts   # Base and health check routes
-│   ├── userRoutes.ts     # User creation and handling
-│   ├── rideRoutes.ts     # Ride booking and history
-│   └── adminRoutes.ts    # Admin-only actions
-├── db.ts                 # PostgreSQL connection setup
-├── .env.example          # Sample environment variables
-├── curl_tests.txt        # Example curl commands
-├── api.md                # API documentation
-├── backend-summary.md    # System logic overview
-```
+## 🧰 Prerequisites
+- Node 18+
+- PostgreSQL (Neon or local)
+- Bash (for helper scripts)
 
 ---
 
-## 🔐 Authentication & Access Control
-
-- All routes (except `/`) require the `x-user-email` header.
-- Admin routes check if user’s role is `"admin"`.
-- Role-based middleware for clean access enforcement.
-
----
-
-## 🚀 Running the Server
+## 🛠 Setup
 
 ```bash
 npm install
-npm run dev
 ```
 
-Ensure your `.env` is properly set. Use `.env.example` as a guide.
+Create `.env`:
 
----
-
-## 🔄 Sample `.env` Configuration
-
-```
-DATABASE_URL=your_postgresql_connection_string
+```ini
+DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
 PORT=3001
+BASE_URL=http://localhost:3001
 ```
 
 ---
 
-## 📘 Documentation
+## ▶️ Run (single Ctrl‑C shutdown)
 
-- [API Docs](./api.md)
-- [Backend Summary](./backend-summary.md)
-
----
-
-## 📌 Developer Notes
-
-- Use `curl_tests.txt` to test all routes
-- Use `git` and `GitHub` to version backend and avoid pushing `.env` files
-- Run `BFG` to remove sensitive files if pushed by accident
+```bash
+npm run start:dev
+```
+- Starts the API via `nodemon` (TypeScript).
+- Tries **localtunnel** first; if not found, falls back to **ngrok**.
+- Prints ngrok dashboard: `http://127.0.0.1:4040`
+- One `Ctrl‑C` stops API **and** tunnel.
 
 ---
 
-## ✅ To-Do / Future Features
+## 🧪 Smoke Tests
 
-- Token-based auth (JWT or Firebase)
-- Input validation (Zod, Joi)
-- Logging & error monitoring
-- Deployment: Railway or Vercel serverless functions
-- Automated tests (Jest + Supertest)
+Validate core flows locally and over ngrok:
+
+```bash
+npm run smoke:local
+npm run smoke:ngrok
+```
+
+These verify:
+- Health
+- Create user (idempotent)
+- Book ride
+- Admin list rides
+- Assign driver
+- Share ride
+- Driver views rides
+- Complete ride
+- Confirm completion
 
 ---
 
-## 🧠 Author’s Note
+## 📁 Structure (key files)
 
-This backend is designed for clarity, extensibility, and production-readiness. It reflects strong backend fundamentals, role handling, and practical dev skills.
-
-Built with intent. Made to scale.
+```
+index.ts                   # Express app boot
+routes/
+  publicRoutes.ts          # /health and misc
+  userRoutes.ts            # /api/users
+  rideRoutes.ts            # /api/rides (book/share/assign/complete)
+  adminRoutes.ts           # /admin/*
+  driverRoutes.ts          # /api/drivers
+  systemRoutes.ts          # internal helpers (e.g., ngrok info)
+models/
+  db.ts                    # pg Pool
+scripts/
+  start-dev.sh             # starts API + tunnel; single Ctrl-C cleanup
+  smoke.sh                 # end-to-end curl smoke tests
+```
 
 ---
 
-_Last updated: July 21, 2025_
+## 🔐 Auth & Roles
+- Header `x-user-email` identifies the caller (demo‑friendly).
+- Admin‑only endpoints guard by role.
+- Consider JWT/OAuth for production.
+
+---
+
+## 🧭 Helpful commands
+
+Local health:
+```bash
+curl -sf http://localhost:3001/health && echo OK
+```
+
+Current ngrok BASE:
+```bash
+curl -s http://127.0.0.1:4040/api/tunnels | sed -n 's/.*"public_url":"\([^"]*\)".*/\1/p' | head -n1
+```
+
+---
+
+## ✅ Status
+Server is **stable** for Milestone‑1 and demo‑ready.
