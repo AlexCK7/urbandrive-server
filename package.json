@@ -4,12 +4,17 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "dev": "ts-node-dev index.ts",
     "start:dev": "scripts/start-dev.sh",
-    "tunnel": "localtunnel --port 3001 --subdomain urbandrive",
+    "dev": "ts-node-dev index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+
     "check-db": "ts-node utils/check-db.ts",
+
     "smoke:local": "scripts/smoke.sh local",
     "smoke:ngrok": "scripts/smoke.sh ngrok",
+    "smoke:strict": "ts-node tests/smoke_strict.ts",
+
     "health:local": "curl -sf http://localhost:3001/health && echo ' OK'",
     "health:ngrok": "BASE=$(curl -s http://127.0.0.1:4040/api/tunnels | sed -n 's/.*\"public_url\":\"\\(https:[^\"]*\\)\".*/\\1/p' | head -n1); echo BASE=$BASE; curl -i \"$BASE/health\""
   },

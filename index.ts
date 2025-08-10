@@ -1,5 +1,6 @@
-// index.ts (finalized)
+// index.ts
 import express from "express";
+import morgan from "morgan";
 import cors from "cors";
 import dotenv from "dotenv";
 import pool from "./models/db";
@@ -14,7 +15,10 @@ dotenv.config();
 
 const app = express();
 
-// CORS setup (open for front‑end dev; refine as needed)
+// request log
+app.use(morgan("dev"));
+
+// CORS (dev-open)
 app.use(cors({
   origin: "*",
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -31,7 +35,7 @@ app.use("/", publicRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/", systemRoutes);
 
-// Bind to 0.0.0.0 so external tunnels can reach the server
+// Bind to 0.0.0.0 for tunnels
 const PORT: number = Number(process.env.PORT) || 3001;
 const HOST = "0.0.0.0";
 const server = app.listen(PORT, HOST, () => {
@@ -39,13 +43,13 @@ const server = app.listen(PORT, HOST, () => {
   console.log(`✅ UrbanDrive backend is running at ${url}`);
 });
 
-// Seed required admin users
+// Seed required admins (idempotent)
 (async () => {
   const adminEmails = ["taiga@urbdrive.com", "alex@example.com", "admin@urbdrive.com"];
   for (const email of adminEmails) {
     try {
       const existing = await pool.query("SELECT 1 FROM users WHERE email=$1", [email]);
-      if (existing.rowCount === 0) {
+      if (!existing || (existing.rowCount ?? 0) === 0) {
         await pool.query("INSERT INTO users (name, email, role) VALUES ($1, $2, $3)", [
           email.split("@")[0], email, "admin",
         ]);
@@ -62,9 +66,7 @@ const server = app.listen(PORT, HOST, () => {
 // Graceful shutdown
 process.on("SIGINT", async () => {
   console.log("\n🛑 SIGINT received: closing server and database pool…");
-  server.close(() => {
-    console.log("🔒 HTTP server closed.");
-  });
+  server.close(() => console.log("🔒 HTTP server closed."));
   await pool.end();
   console.log("✅ PostgreSQL pool closed.");
   process.exit(0);
