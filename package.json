@@ -8,17 +8,22 @@
     "dev": "ts-node-dev index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-
     "check-db": "ts-node utils/check-db.ts",
-
     "smoke:local": "scripts/smoke.sh local",
     "smoke:ngrok": "scripts/smoke.sh ngrok",
     "smoke:strict": "ts-node tests/smoke_strict.ts",
-
     "health:local": "curl -sf http://localhost:3001/health && echo ' OK'",
-    "health:ngrok": "BASE=$(curl -s http://127.0.0.1:4040/api/tunnels | sed -n 's/.*\"public_url\":\"\\(https:[^\"]*\\)\".*/\\1/p' | head -n1); echo BASE=$BASE; curl -i \"$BASE/health\""
+    "health:ngrok": "BASE=$(curl -s http://127.0.0.1:4040/api/tunnels | sed -n 's/.*\"public_url\":\"\\(https:[^\"]*\\)\".*/\\1/p' | head -n1); echo BASE=$BASE; curl -i \"$BASE/health\"",
+    "migrate": "dotenv -e .env -- node-pg-migrate up -m migrations",
+    "migrate:down": "dotenv -e .env -- node-pg-migrate down -m migrations",
+    "migrate:create": "node-pg-migrate create --migrations-dir migrations",
+    "db": "dotenv -e .env -- sh -lc 'psql \"$DATABASE_URL\" \"$@\"' --",
+    "db:open": "dotenv -e .env -- sh -lc 'psql \"$DATABASE_URL\"'",
+    "...": "...",
+  "smoke:phase1": "BASE=${BASE:-http://localhost:3001} bash scripts/smoke-phase1.sh"
   },
   "dependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.5",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
@@ -26,6 +31,7 @@
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.1",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.1",
     "pg": "^8.16.3"
   },
@@ -35,6 +41,8 @@
     "@types/express": "^5.0.3",
     "@types/morgan": "^1.9.10",
     "@types/node": "^24.1.0",
+    "dotenv-cli": "^10.0.0",
+    "node-pg-migrate": "^8.0.3",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.8.3"

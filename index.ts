@@ -4,35 +4,44 @@ import morgan from "morgan";
 import cors from "cors";
 import dotenv from "dotenv";
 import pool from "./models/db";
+
 import userRoutes from "./routes/userRoutes";
 import rideRoutes from "./routes/rideRoutes";
 import adminRoutes from "./routes/adminRoutes";
 import publicRoutes from "./routes/publicRoutes";
 import driverRoutes from "./routes/driverRoutes";
 import { systemRoutes } from "./routes/systemRoutes";
+import driverApplicationRoutes from "./routes/driverApplicationRoutes";
+
+import authOptional from "./middleware/auth"; // 👈 change to default import
+
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 const app = express();
 
-// request log
+// security & platform basics first
+app.set("trust proxy", 1);
+app.use(helmet());
+app.use(rateLimit({ windowMs: 60_000, max: 200 }));
+
+// CORS + logging + body
+app.use(cors({ origin: "*", methods: ["GET","POST","PUT","PATCH","DELETE"], credentials: true }));
 app.use(morgan("dev"));
-
-// CORS (dev-open)
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-  credentials: true,
-}));
-
 app.use(express.json());
 
-// API routes
+// auth (populates req.authUser if token present)
+app.use(authOptional);
+
+// routes
 app.use("/api/users", userRoutes);
 app.use("/api/rides", rideRoutes);
 app.use("/admin", adminRoutes);
+app.use("/api/driver", driverRoutes);              // 👈 keep this one
+app.use("/api/driver-applications", driverApplicationRoutes);
 app.use("/", publicRoutes);
-app.use("/api/drivers", driverRoutes);
 app.use("/", systemRoutes);
 
 // Bind to 0.0.0.0 for tunnels
